@@ -61,9 +61,13 @@ qwcd = function(qF,qG,alphas,step_p = 0.0001,switch.args = FALSE){
 # Simple approximation formula for the (quantile-weighted) Cramér distance
 # (only special cases of two distribution setting)
 # TODO: Implement further safety checks + decomposition
-qwcd_simple = function(quantiles.F = NULL, quantiles.G = NULL, qF = NULL, qG = NULL,alphas){
+qwcd_simple = function(quantiles.F = NULL, quantiles.G = NULL, qF = NULL, qG = NULL,alphas = NULL,betas = NULL){
   if(is.null(alphas)) stop("Quantile levels (alphas) need to be specified!")
   K = length(alphas)
+  if(is.null(betas)){
+    betas = alphas
+    print("Quantile levels of G (betas) set to match quantile levels of F (alphas).")
+  }
   
   if(is.null(quantiles.F) + is.null(qF) != 1) 
     stop("The first distribution needs to be specified either through a vector of quantiles 
@@ -72,8 +76,11 @@ qwcd_simple = function(quantiles.F = NULL, quantiles.G = NULL, qF = NULL, qG = N
     stop("The second distribution needs to be specified either through a vector of quantiles 
          at the given levels (alphas) or through its quantile function (qG). Do not specify both!")
   
-  integrand = function(i,j) (sign(alphas[i] - alphas[j]) != sign(qF(alphas[i]) - qG(alphas[j])))*
-    abs(qF(alphas[i]) - qG(alphas[j]))/(K+1)
+  quantiles.F = qF(alphas)
+  quantiles.G = qG(betas)
+  
+  integrand = function(i,j) (sign(alphas[i] - alphas[j]) != sign(quantiles.F[i] - quantiles.G[j]))*
+    abs(quantiles.F[i] - quantiles.G[j])/(K+1)
   return(2*sum(t(outer(1:K,1:K,integrand)))/K)
 }
 
