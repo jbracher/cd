@@ -159,10 +159,10 @@ qwcd_approx = function(quantiles.F = NULL, quantiles.G = NULL, qF = NULL, qG = N
              weights[i]*weight_gamma*                   # Assumes symmetric weights for simplicity...
              c(SFG = pmax(0,pmin(lF - lG, uF - uG) + pmax(0,lF - uG)),
                SGF = pmax(0,pmin(lG - lF, uG - uF) + pmax(0,lG - uF)),
-               DFG = ifelse(2*alphas[i] <= gammas[j] + gammas[j+1],
-                            pmax(0, (uG - lG) - (uF - lF)), 0),
-               DGF = ifelse(gammas[j] + gammas[j+1] <= 2*alphas[i],
-                            pmax(0, (uF - lF) - (uG - lG)), 0)))
+               DFG = ifelse(gammas[j] + gammas[j+1] <= 2*alphas[i],
+                            pmax(0, (uF - lF) - (uG - lG)), 0),
+               DGF = ifelse(2*alphas[i] <= gammas[j] + gammas[j+1],
+                            pmax(0, (uG - lG) - (uF - lF)), 0)))
   }
   
   comps = rowSums(apply(expand.grid(1:ceiling(K/2),1:ceiling((L-1)/2)), 1,
