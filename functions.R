@@ -86,10 +86,9 @@ qwcd_simple = function(quantiles.F = NULL, quantiles.G = NULL, qF = NULL, qG = N
 
 # General approximation formula for the quantile-weighted Cramér distance + decomposition
 # (empirical setting and two distribution setting)
-# TODO: Implement a method to symmetrize quantile levels, e.g., by linear interpolation
 qwcd_approx = function(quantiles.F = NULL, quantiles.G = NULL, qF = NULL, qG = NULL, y = NULL,
-                       alphas = NULL, betas = NULL, weights = NULL, return_decomp = TRUE){
-  if(is.null(alphas)) stop("Quantile levels (alphas) need to be specified!")
+                       alphas, betas = NULL, weights = NULL, return_decomp = TRUE){
+  # if(is.null(alphas)) stop("Quantile levels (alphas) need to be specified!")
   K = length(alphas)
   # Check required symmetries: Quantile levels (alphas) should be symmetric around 0.5 
   # for the decomposition to make sense.
@@ -197,3 +196,122 @@ qwcd_approx = function(quantiles.F = NULL, quantiles.G = NULL, qF = NULL, qG = N
                              DFG = comps[['DFG']], DGF = comps[['DGF']]))
   else return(qwcd)
 }
+
+# Symmetrize quantile levels to compute asymmetric approximation + decomposition
+# Uses linear interpolation to infer missing quantiles
+# (TODO?: Implement empirical setting, weights?)
+qwcd_approx.symmetrize = function(quantiles.F, quantiles.G, # y = NULL, weights = NULL,
+                                  alphas, betas = NULL, return_decomp = TRUE){
+  if(is.null(betas)) betas = alphas
+  if(length(quantiles.F) != length(alphas)) 
+    stop("Number of quantiles of F (quantiles.F) does not match number of quantile levels
+         (alphas).")
+  if(length(quantiles.G) != length(betas)) 
+    stop("Number of quantiles of G (quantiles.G) does not match number of quantile levels
+           (betas/alphas).")
+  
+  # Symmetrize levels and quantiles
+  qFhat = approxfun(x = c(0,alphas,1), y = c(min(quantiles.F,quantiles.G), quantiles.F,
+                                             max(quantiles.F,quantiles.G)))
+  qGhat = approxfun(x = c(0,betas,1), y = c(min(quantiles.F,quantiles.G), quantiles.G,
+                                            max(quantiles.F,quantiles.G)))
+  alphas_ext = sort(unique(round(c(alphas,1-alphas),10)))
+  betas_ext = sort(unique(round(c(betas,1-betas),10)))
+  quantiles.F_ext = qFhat(alphas_ext)
+  quantiles.G_ext = qGhat(betas_ext)
+  
+  # Compute CD + decomposition
+  return(qwcd_approx(quantiles.F = quantiles.F_ext,quantiles.G = quantiles.G_ext,
+                     alphas = alphas_ext,betas = betas_ext,return_decomp = return_decomp))
+}
+
+# Symmetric approximation formula for the Cramér distance + decomposition
+# (two distribution setting)
+# includes symmetrization of the levels
+cd_approx = function(quantiles.F, quantiles.G, # qF = NULL, qG = NULL, y = NULL,
+                     alphas, betas = NULL, add_levels = c(), return_decomp = TRUE){
+  # if(is.null(alphas)) stop("Quantile levels (alphas) need to be specified!")
+  K = length(alphas)
+  # Check required symmetries: Quantile levels (alphas) should be symmetric around 0.5 
+  # for the decomposition to make sense.
+  if(any(round(alphas + alphas[K:1],10) != 1))
+    warning("Quantile levels do not bound central prediction intervals.")
+  
+  if(length(quantiles.F) != length(alphas)) 
+    stop("Number of quantiles of F (quantiles.F) does not match number of quantile levels
+         (alphas).")
+  if(is.null(betas)){
+    betas = alphas
+    print("Quantile levels of G (betas) set to match quantile levels of F (alphas).")
+  }
+  M = length(betas)
+  if(any(round(betas + betas[M:1],10) != 1)) warning("Quantile levels (betas) not symmetric.")
+  if(length(quantiles.G) != length(betas)) 
+    stop("Number of quantiles of G (quantiles.G) does not match number of quantile levels
+         (betas/alphas).")
+  
+  qFhat = approxfun(x = c(0,alphas,1), y = c(min(quantiles.F,quantiles.G), quantiles.F,
+                                             max(quantiles.F,quantiles.G)))
+  qGhat = approxfun(x = c(0,betas,1), y = c(min(quantiles.F,quantiles.G), quantiles.G,
+                                            max(quantiles.F,quantiles.G)))
+
+
+  gammas = sort(unique(round(c(0,alphas,1-alphas,betas,1-betas,add_levels,1),digits = 10))) 
+  # rounding avoids multiples that differ only by an epsilon
+  
+  # only use equally spaced levels:
+  # gammas = seq(0,1,0.01)
+  
+  L = length(gammas) # This is L+1 in (2)!
+  
+  # Compute components
+  integrand_comps = function(i,j){
+    weights = gammas[i+1] - gammas[i]
+    weight_gamma = gammas[j+1] - gammas[j]
+    lF = qFhat((gammas[i+1] + gammas[i])/2)
+    uF = qFhat((gammas[L+1 - (i+1)] + gammas[L+1 - i])/2)
+    lG = qGhat((gammas[j+1] + gammas[j])/2)
+    uG = qGhat((gammas[L+1 - (j+1)] + gammas[L+1 - j])/2)
+    
+    return(ifelse(round((gammas[i+1] + gammas[i])/2,10) == 0.5 || round((gammas[j+1] + gammas[j])/2,10) == 0.5, 1, 2)*
+             # correction factor for the median times factor 2
+             weights*weight_gamma*
+             c(SFG = pmax(0,pmin(lF - lG, uF - uG) + pmax(0,lF - uG)),
+               SGF = pmax(0,pmin(lG - lF, uG - uF) + pmax(0,lG - uF)),
+               DFG = ifelse(gammas[j] + gammas[j+1] <= gammas[i] + gammas[i+1],
+                            pmax(0, (uF - lF) - (uG - lG)), 0),
+               DGF = ifelse(gammas[i] + gammas[i+1] <= gammas[j] + gammas[j+1],
+                            pmax(0, (uG - lG) - (uF - lF)), 0)))
+  }
+  
+  comps = rowSums(apply(expand.grid(1:ceiling((L-1)/2),1:ceiling((L-1)/2)), 1,
+                        function(x) integrand_comps(x[1],x[2])))
+  
+  # Compute approximation directly
+  # Can be skipped to speed-up computation. Replace with:
+  cd = sum(comps)
+  
+  # TODO: Adapt following code to symmetric approximation
+  # integrand_qwcd = function(i,j){
+  #   weight_gamma = (gammas[j+1] - gammas[j])
+  #   quantile.Ghat = qGhat((gammas[j+1] + gammas[j])/2)
+  #   
+  #   return(weights[i]*weight_gamma*abs(quantiles.F[i] - quantile.Ghat)*
+  #            (sign(alphas[i] - (gammas[j+1] + gammas[j])/2) != sign(quantiles.F[i] - quantile.Ghat)))
+  # }
+  # qwcd = 2*sum(t(outer(1:K,1:(L-1),integrand_qwcd)))
+  
+  # Check: Approximated qwCD is equal sum of components
+  if(round(cd,10) != round(sum(comps),10)) 
+    warning(paste0("Sum of components does not match approximate CD. 
+                   Difference (CD - Sum) = ",signif((cd - sum(comps)))))
+  
+  if(return_decomp) return(c(cd = cd, SFG = comps[['SFG']], SGF = comps[['SGF']],
+                             DFG = comps[['DFG']], DGF = comps[['DGF']]))
+  else return(cd)
+}
+
+
+
+
+
