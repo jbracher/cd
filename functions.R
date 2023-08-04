@@ -3,59 +3,84 @@
 ############################################################
 # Approximations of the Cramér distance
 # Riemann sum approximation based on cumulative distribution functions
-cd_CDF = function(pF,pG,step_x = 0.0001,lower = -100,upper = 100){
-  # Do some safety checks? E.g., pF(lower),pG(lower) < eps, pF(upper),pG(upper) > 1 - eps ?
-  grid_x = seq(from = lower, to = upper, by = step_x)
-  return(sum(step_x*sum((pF(grid_x) - pG(grid_x))^2)))  
-}
+# cd_CDF = function(pF,pG,step_x = 0.0001,lower = -100,upper = 100){
+#   # Do some safety checks? E.g., pF(lower),pG(lower) < eps, pF(upper),pG(upper) > 1 - eps ?
+#   grid_x = seq(from = lower, to = upper, by = step_x)
+#   return(sum(step_x*sum((pF(grid_x) - pG(grid_x))^2)))  
+# }
+# 
+# # Riemann sum approximation based on quantile functions
+# cd_quant = function(qF,qG, step_p = 0.0001){
+#   # Safety checks?
+#   alphas = betas = seq(from = step_p, to = 1 - step_p, by = step_p)
+#   gammas = c(0,alphas,1)
+#   K = length(alphas)
+#   
+#   quantiles.F = qF(alphas)
+#   quantiles.G = qG((gammas[-(K+2)] + gammas[-1])/2)
+#   
+#   integrand = function(i,j){
+#     return((gammas[j+1] - gammas[j])*(sign(alphas[i] - (gammas[j] + gammas[j+1])/2) != 
+#                                         sign(quantiles.F[i] - quantiles.G[j]))*
+#              abs(quantiles.F[i] - quantiles.G[j]))
+#   }
+#   return(2*sum(t(outer(1:K,1:(K+1),integrand)))/K)
+# }
 
-# Riemann sum approximation based on quantile functions
-# Implement decomposition?
-cd_quant = function(qF,qG, step_p = 0.0001){
-  # Safety checks?
-  alphas = betas = seq(from = step_p, to = 1 - step_p, by = step_p)
-  gammas = c(0,alphas,1)
-  K = length(alphas)
-  
-  quantiles.F = qF(alphas)
-  quantiles.G = qG((gammas[-(K+2)] + gammas[-1])/2)
-  
-  integrand = function(i,j){
-    return((gammas[j+1] - gammas[j])*(sign(alphas[i] - (gammas[j] + gammas[j+1])/2) != 
-                                        sign(quantiles.F[i] - quantiles.G[j]))*
-             abs(quantiles.F[i] - quantiles.G[j]))
-  }
-  return(2*sum(t(outer(1:K,1:(K+1),integrand)))/K)
-}
+# Approximation based on the CDFs using integrate()
+cd_CDF = function(pF,pG,lower = -Inf,upper = Inf) integrate(function(x) (pF(x) - pG(x))^2,lower = lower,upper = upper,stop.on.error = FALSE)$value
+# Approximation of the decomposition using integrate()
+cd_shift = function(qF,qG) 0.5*integrate(function(y) sapply(y, function(y) integrate(function(x,y) pmax(0,pmin(qF(x/2) - qG(y/2),qF(1-x/2) - qG(1-y/2))) + pmax(0,qF(x/2) - qG(1-y/2)),
+                                                                                          lower = 0, upper = 1, y,stop.on.error = FALSE)$value), lower = 0, upper = 1)$value
+cd_disp = function(qF,qG) integrate(function(y) sapply(y, function(y) integrate(function(x,y) 0.5*pmax(0,(qF(1-x/2) - qF(x/2)) - (qG(1-y/2) - qG(y/2))),
+                                                                                     lower = y, upper = 1, y,stop.on.error = FALSE)$value), lower = 0, upper = 1,stop.on.error = FALSE)$value
+cd_decomp = function(qF,qG) c(cd_shift(qF,qG),cd_shift(qG,qF),cd_disp(qF,qG),cd_disp(qG,qF))
 
 ############################################################
 # Approximations of the quantile-weighted Cramér distance
 # Approximation based on the full quantile function
-# Implement decomposition?
-qwcd = function(qF,qG,alphas,step_p = 0.0001,switch.args = FALSE){
-  # Assumes uniform weights. Implement weighting?
-  # Implement decomposition?
-  if(switch.args){
-    qG.prior = qG
-    qG = qF
-    qF = qG.prior
-  }
-  
-  gammas = seq(from = 0, to = 1, by = step_p)
-  K = length(alphas)
-  L = length(gammas)
-  
-  quantiles.F = qF(alphas)
-  quantiles.G = qG((gammas[-L] + gammas[-1])/2)
-  
-  integrand = function(i,j){
-    return((gammas[j+1] - gammas[j])*
-             (sign(alphas[i] - (gammas[j] + gammas[j+1])/2) != 
-                sign(quantiles.F[i] - quantiles.G[j]))*
-             abs(quantiles.F[i] - quantiles.G[j]))
-  }
-  return(2*sum(t(outer(1:K,1:(L-1),integrand)))/K)
-}
+# qwcd = function(qF,qG,alphas,step_p = 0.0001,switch.args = FALSE){
+#   # Assumes uniform weights. Implement weighting?
+#   # Implement decomposition?
+#   if(switch.args){
+#     qG.prior = qG
+#     qG = qF
+#     qF = qG.prior
+#   }
+#   
+#   gammas = seq(from = 0, to = 1, by = step_p)
+#   K = length(alphas)
+#   L = length(gammas)
+#   
+#   quantiles.F = qF(alphas)
+#   quantiles.G = qG((gammas[-L] + gammas[-1])/2)
+#   
+#   integrand = function(i,j){
+#     return((gammas[j+1] - gammas[j])*
+#              (sign(alphas[i] - (gammas[j] + gammas[j+1])/2) != 
+#                 sign(quantiles.F[i] - quantiles.G[j]))*
+#              abs(quantiles.F[i] - quantiles.G[j]))
+#   }
+#   return(2*sum(t(outer(1:K,1:(L-1),integrand)))/K)
+# }
+
+# Approximation based on the quantile functions using integrate()
+qwcd = function(qF,qG,alphas) 2/length(alphas)*sum(sapply(alphas, function(x) integrate(function(y,x) ifelse(sign(x-y) != sign(qF(x) - qG(y)),abs(qF(x) - qG(y)),0),
+                                                                                        lower = 0, upper = 1, x,stop.on.error = FALSE)$value))
+qwcd_shift1 = function(qF,qG,alphas) 1/length(alphas)*sum(sapply(1-(rev(alphas) - alphas)[1:ceiling(length(alphas)/2)], 
+                                                                      function(x) ifelse(x == 1,0.5,1)*integrate(function(y,x) pmax(0,pmin(qF(x/2) - qG(y/2),qF(1-x/2) - qG(1-y/2))) + pmax(0,qF(x/2) - qG(1-y/2)),
+                                                                                                                 lower = 0, upper = 1, x,stop.on.error = FALSE)$value))
+qwcd_disp1 = function(qF,qG,alphas) 1/length(alphas)*sum(sapply(1-(rev(alphas) - alphas)[1:ceiling(length(alphas)/2)], 
+                                                                     function(x) ifelse(x == 1,0.5,1)*integrate(function(y,x) pmax(0,(qF(1-x/2) - qF(x/2)) - (qG(1-y/2) - qG(y/2))),
+                                                                                                                lower = 0, upper = x, x,stop.on.error = FALSE)$value))
+qwcd_shift2 = function(qF,qG,alphas) 1/length(alphas)*sum(sapply(1-(rev(alphas) - alphas)[1:ceiling(length(alphas)/2)], 
+                                                                      function(x) ifelse(x == 1,0.5,1)*integrate(function(y,x) pmax(0,pmin(qG(y/2) - qF(x/2),qG(1-y/2) - qF(1-x/2))) + pmax(0,qG(y/2) - qF(1-x/2)),
+                                                                                                                 lower = 0, upper = 1, x,stop.on.error = FALSE)$value))
+qwcd_disp2 = function(qF,qG,alphas) 1/length(alphas)*sum(sapply(1-(rev(alphas) - alphas)[1:ceiling(length(alphas)/2)], 
+                                                                     function(x) ifelse(x == 1,0.5,1)*integrate(function(y,x) pmax(0,(qG(1-y/2) - qG(y/2)) - (qF(1-x/2) - qF(x/2))),
+                                                                                                                lower = x, upper = 1, x,stop.on.error = FALSE)$value))
+qwcd_decomp = function(qF,qG,alphas) c(qwcd_shift1(qF,qG,alphas),qwcd_shift2(qF,qG,alphas),
+                                       qwcd_disp1(qF,qG,alphas),qwcd_disp2(qF,qG,alphas))
 
 # Approximations based on a finite number of known quantiles
 # Simple approximation formula for the (quantile-weighted) Cramér distance
