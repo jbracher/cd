@@ -1,6 +1,15 @@
 # Some functions to be used in our studies
 
 ############################################################
+# Approximation of the 1-Wasserstein distance and its decomposition using integrate()
+wd = function(qF,qG) integrate(function(x) abs(qF(x) - qG(x)), lower = 0, upper = 1, stop.on.error = FALSE)$value
+wd_shift = function(qF,qG) integrate(function(x) pmax(0,pmin(qF(x/2) - qG(x/2),qF(1-x/2) - qG(1-x/2))), 
+                                     lower = 0, upper = 1, stop.on.error = FALSE)$value
+wd_disp = function(qF,qG) 0.5*integrate(function(x) pmax(0,qF(1-x/2) - qF(x/2) - qG(1-x/2) + qG(x/2)), 
+                                        lower = 0, upper = 1, stop.on.error = FALSE)$value
+wd_decomp = function(qF,qG) c(wd_shift(qF,qG),wd_shift(qG,qF),wd_disp(qF,qG),wd_disp(qG,qF))
+
+############################################################
 # Approximations of the Cramér distance
 # Riemann sum approximation based on cumulative distribution functions
 # cd_CDF = function(pF,pG,step_x = 0.0001,lower = -100,upper = 100){
