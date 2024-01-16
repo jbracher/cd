@@ -40,7 +40,7 @@ wd_decomp = function(qF,qG) c(wd_shift(qF,qG),wd_shift(qG,qF),wd_disp(qF,qG),wd_
 cd_CDF = function(pF,pG,lower = -Inf,upper = Inf) integrate(function(x) (pF(x) - pG(x))^2,lower = lower,upper = upper,stop.on.error = FALSE)$value
 # Approximation of the decomposition using integrate()
 cd_shift = function(qF,qG) 0.5*integrate(function(y) sapply(y, function(y) integrate(function(x,y) pmax(0,pmin(qF(x/2) - qG(y/2),qF(1-x/2) - qG(1-y/2))) + pmax(0,qF(x/2) - qG(1-y/2)),
-                                                                                          lower = 0, upper = 1, y,stop.on.error = FALSE)$value), lower = 0, upper = 1)$value
+                                                                                          lower = 0, upper = 1, y,stop.on.error = FALSE)$value), lower = 0, upper = 1,stop.on.error = FALSE)$value
 cd_disp = function(qF,qG) integrate(function(y) sapply(y, function(y) integrate(function(x,y) 0.5*pmax(0,(qF(1-x/2) - qF(x/2)) - (qG(1-y/2) - qG(y/2))),
                                                                                      lower = y, upper = 1, y,stop.on.error = FALSE)$value), lower = 0, upper = 1,stop.on.error = FALSE)$value
 cd_decomp = function(qF,qG) c(cd_shift(qF,qG),cd_shift(qG,qF),cd_disp(qF,qG),cd_disp(qG,qF))
@@ -400,9 +400,7 @@ cd_approx.adapted = function(quantiles.F, quantiles.G, # qF = NULL, qG = NULL, y
     uF = qFhat(alphas[K+1 - i])
     lG = qGhat(betas[j])
     uG = qGhat(betas[M+1 - j])
-    
-    print(c(alphas[i],betas[j]))
-    
+
     return(ifelse(round(alphas[i],10) == 0.5 || round(betas[j],10) == 0.5, 1, 2)*
              # correction factor for the median times factor 2
              ifelse(alphas[i] == betas[j],0.5,1)*
