@@ -9,6 +9,16 @@ wd_disp = function(qF,qG) 0.5*integrate(function(x) pmax(0,qF(1-x/2) - qF(x/2) -
                                         lower = 0, upper = 1, stop.on.error = FALSE)$value
 wd_decomp = function(qF,qG) c(wd_shift(qF,qG),wd_shift(qG,qF),wd_disp(qF,qG),wd_disp(qG,qF))
 
+# Approximation of the p-th power p-Wasserstein distance and its decomposition using integrate()
+# Defaults to the squared 2-Wasserstein distance
+pwd = function(qF,qG,p = 2) integrate(function(x) (abs(qF(x) - qG(x)))^p, lower = 0, upper = 1, stop.on.error = FALSE)$value
+pwd_shift = function(qF,qG,p = 2) integrate(function(x) pmax(0,pmin(sign(qF(x/2) - qG(x/2))*abs(qF(x/2) - qG(x/2))^p,
+                                                                    sign(qF(1-x/2) - qG(1-x/2))*abs(qF(1-x/2) - qG(1-x/2))^p)), 
+                                     lower = 0, upper = 1, stop.on.error = FALSE)$value
+pwd_disp = function(qF,qG,p = 2) 0.5*integrate(function(x) pmax(0,sign(qF(1-x/2) - qG(1-x/2))*abs(qF(1-x/2) - qG(1-x/2))^p - sign(qF(x/2) - qG(x/2))*abs(qF(x/2) - qG(x/2))^p), 
+                                        lower = 0, upper = 1, stop.on.error = FALSE)$value
+pwd_decomp = function(qF,qG,p = 2) c(pwd_shift(qF,qG,p = p),pwd_shift(qG,qF,p = p),pwd_disp(qF,qG,p = p),pwd_disp(qG,qF,p = p))
+
 ############################################################
 # Approximations of the Cramér distance
 # Riemann sum approximation based on cumulative distribution functions
