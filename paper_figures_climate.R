@@ -18,17 +18,18 @@ col_shift2_sat = "orangered3"
 
 
 # read in data and generate functions to evaluate densities and quantiles
-dat1 <- read.csv("HadGEM2-ES_2x2.csv")
+dat1 <- read.csv("data_figures_climate/HadGEM2-ES_2x2.csv")
 dF_model1 <- approxfun(density(dat1$model), yleft = 0, yright = 0)
 dF_truth1 <- approxfun(density(dat1$truth), yleft = 0, yright = 0)
-qF_model1 <- function(x) quantile(dat1$model, probs = x)
-qF_truth1 <- function(x) quantile(dat1$truth, probs = x)
+qF_model1 <- function(x) quantile(dat1$model, probs = x, type = 1)
+qF_truth1 <- function(x) quantile(dat1$truth, probs = x, type = 1)
 
-dat2 <- read.csv("HadGEM2-ES_3x3.csv")
+
+dat2 <- read.csv("data_figures_climate/HadGEM2-ES_3x3.csv")
 dF_model2 <- approxfun(density(dat2$model), yleft = 0, yright = 0)
 dF_truth2 <- approxfun(density(dat2$truth), yleft = 0, yright = 0)
-qF_model2 <- function(x) quantile(dat2$model, probs = x)
-qF_truth2 <- function(x) quantile(dat2$truth, probs = x)
+qF_model2 <- function(x) quantile(dat2$model, probs = x, type = 1)
+qF_truth2 <- function(x) quantile(dat2$truth, probs = x, type = 1)
 
 
 # First figure: illustrating that different grid cells have biases into different directions
@@ -51,7 +52,7 @@ dev.off()
 
 
 # read in data for second example and generate functions
-dat3 <- read.csv("disp_HadGEM2-ES_12x10.csv")
+dat3 <- read.csv("data_figures_climate/disp_HadGEM2-ES_12x10.csv")
 dF_model3 <- approxfun(density(dat3$model), yleft = 0, yright = 0)
 dF_truth3 <- approxfun(density(dat3$truth), yleft = 0, yright = 0)
 qF_model3 <- function(x) quantile(dat3$model, probs = x)
