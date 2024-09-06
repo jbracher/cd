@@ -3,7 +3,6 @@
 # get functions
 source("functions.R")
 source("paper_plotting.R")
-source("paper_distributions.R")
 
 # set colours (DW)
 col1 = "darkmagenta"
@@ -55,8 +54,8 @@ dev.off()
 dat3 <- read.csv("data_figures_climate/disp_HadGEM2-ES_12x10.csv")
 dF_model3 <- approxfun(density(dat3$model), yleft = 0, yright = 0)
 dF_truth3 <- approxfun(density(dat3$truth), yleft = 0, yright = 0)
-qF_model3 <- function(x) quantile(dat3$model, probs = x)
-qF_truth3 <- function(x) quantile(dat3$truth, probs = x)
+qF_model3 <- function(x) quantile(dat3$model, probs = x, type = 1)
+qF_truth3 <- function(x) quantile(dat3$truth, probs = x, type = 1)
 
 wd3 <- wd_decomp(qF_model3, qF_truth3)
 # cd3 <- cd_decomp(qF_model3, qF_truth3) # too slow
